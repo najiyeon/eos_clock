@@ -1,4 +1,4 @@
-import 'package:eos_clock/screens/my_home_page.dart';
+import 'package:eos_clock/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const MyApp());
@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.lightGreen, fontFamily: 'Exo'
       ),
-      home: MyHomePage()
+      home: HomeScreen()
     );
   }
 }
