@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:eos_clock/view/home_screen.dart';
 import 'package:eos_clock/view/signup_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+
+final String URL = "http://13.209.96.204:8000/";
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,7 +16,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _auth = FirebaseAuth.instance;
+  // firebase authentication instance 생성
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -41,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
           border: OutlineInputBorder(), labelText: 'password'),
       validator: (String? value) {
         if (value!.isEmpty) {
+          // null or isEmpty
           return '비밀번호를 입력해주세요.';
         }
         return null;
@@ -58,47 +63,46 @@ class _LoginScreenState extends State<LoginScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  _userIdWidget(),
-                  const SizedBox(
-                    height: 20.0,
-                  ), // SizedBox
-                  _passwordWidget(),
-                  Container(
-                    height: 50,
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(top: 8.0),
-                    child: ElevatedButton(
-                      onPressed: () => _login(),
-                      child: const Text('로그인'),
-                    ),
-                  ),
-                  GestureDetector(
-                      child: Container(
-                          width: double.infinity,
-                          alignment: AlignmentDirectional.center,
-                          padding: EdgeInsets.only(top: 20.0, bottom: 20.0),
-                          child: Text('회원 가입')),
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) {
-                          return SignUpScreen();
-                        }));
-                      })
-                ],
-              )),
-        ),
-      ),
+          child: Form(
+              key: _formKey,
+              child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      _userIdWidget(),
+                      const SizedBox(
+                        height: 20.0,
+                      ),
+                      _passwordWidget(),
+                      Container(
+                        height: 50,
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 8.0),
+                        child: ElevatedButton(
+                          onPressed: () => _login(),
+                          child: const Text("로그인"),
+                        ),
+                      ),
+                      GestureDetector(
+                          child: Container(
+                              width: double.infinity,
+                              alignment: AlignmentDirectional.center,
+                              padding: EdgeInsets.only(top: 20.0, bottom: 20.0),
+                              child: Text("회원 가입")),
+                          onTap: () {
+                            Navigator.push(context,
+                                MaterialPageRoute(builder: (context) {
+                              return SignUpScreen();
+                            }));
+                          })
+                    ],
+                  )))),
     );
   }
 
   @override
   void initState() {
+    // TODO: implement initState
     super.initState();
   }
 
@@ -114,26 +118,36 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).requestFocus(FocusNode());
 
-      //firebase 사용자 인증, 사용자 등록
-      try {
-        await _auth.signInWithEmailAndPassword(
-            email: _emailController.text, password: _passwordController.text);
+      String message = '';
+
+      final request = Uri.parse(URL + "user/login/" + _emailController.text);
+
+      Future<Map<String, String>> fetch() async {
+        print("here");
+        Map<String, String> header = {"password": _passwordController.text};
+        print("here1");
+        final response = await http.get(request, headers: header);
+        var decodedResult = jsonDecode(response.body) as Map<String, dynamic>;
+
+        var result =
+            decodedResult.map((key, value) => MapEntry(key, value.toString()));
+
+        return result;
+      }
+
+      var response = fetch();
+
+      message = await response.then((value) => value['result'].toString());
+
+      message =
+          await response.then((value) => value["error_message"].toString());
+
+      if (message == 'login success') {
         Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen()),
             (route) => false);
-        // Navigator.pushNamed And RemoveUntil(context, '/home', (route) => false);
-      } on FirebaseAuthException catch (e) {
-        // Logger.e(e);
-        String message = '';
-
-        if (e.code == 'user-not-found') {
-          message = '사용자가 존재하지 않습니다.';
-        } else if (e.code == 'wrong-password') {
-          message = '비밀번호를 확인하세요.';
-        } else if (e.code == 'invalid-email') {
-          message = '이메일을 확인하세요';
-        }
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(message),
           backgroundColor: Colors.deepOrange,

@@ -1,5 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+
+final String URL = "http://13.209.96.204:8000/";
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -103,36 +108,40 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_formKey.currentState!.validate()) {
       FocusScope.of(context).requestFocus(FocusNode());
 
-      //firebase 사용자 인증, 사용자 등록
-      try {
-        UserCredential userCredential = await _auth
-            .createUserWithEmailAndPassword(
-                email: _emailController.text,
-                password: _passwordController.text)
-            .then((value) {
-          if (value.user!.email == null) {
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('회원가입 완료'),
-              backgroundColor: Colors.blue,
-            ));
-            // Navigator.pop(context);
-          }
-          return value;
-        });
-        // _auth.currentUser?.sendEmailVerification();
-      } on FirebaseAuthException catch (e) {
-        print(e);
-        String message = '';
+      String message = '';
 
-        if (e.code == 'weak-password') {
-          message = '취약한 비밀번호입니다. ';
-        } else if (e.code == 'email-already-in-use') {
-          message = '이미 사용중인 이메일입니다.';
-        } else {
-          message = e.message.toString();
-        }
+      final request = Uri.parse(URL + "user/signup");
 
+      Future<Map<String, String>> fetch() async {
+        print("here");
+        Map<String, String> body = {
+          "email": _emailController.text,
+          "password": _passwordController.text
+        };
+        print("here1");
+        final response = await http.post(request, body: body);
+        var decodedResult = jsonDecode(response.body) as Map<String, dynamic>;
+
+        print(decodedResult);
+
+        var result =
+            decodedResult.map((key, value) => MapEntry(key, value.toString()));
+
+        return result;
+      }
+
+      var response = fetch();
+
+      // print(response);
+
+      message = await response.then((value) => value['result'].toString());
+
+      message =
+          await response.then((value) => value["error_message"].toString());
+
+      if (message == "signup success") {
+        Navigator.pop(context);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(message),
           backgroundColor: Colors.deepOrange,
